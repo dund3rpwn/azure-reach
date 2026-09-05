@@ -1,0 +1,29 @@
+# Escalation edges. Tab separated. Adding one should be a data change, not a code change.
+#
+# trigger_kind   arm_role | app_role | data_access
+# trigger        the role name, application permission, or data-plane capability
+# needs          resource type that must also be visible, or blank for none
+# reaches        what taking the edge would get you
+# precondition   what has to be true beyond the trigger, in plain words
+#
+# Every row is an inference. Nothing here is taken -- the tool reports the edge
+# and stops. Taking it is a decision for a human with a scope document.
+id	trigger_kind	trigger	needs	reaches	precondition
+owner-self-grant	arm_role	Owner		any role at that scope, including roles the credential does not currently hold	Owner carries Microsoft.Authorization/roleAssignments/write, so the ceiling is the scope, not the role
+uaa-self-grant	arm_role	User Access Administrator		any role at that scope	User Access Administrator is roleAssignments/write with no data access of its own, which makes it easy to under-rate
+contributor-vm-identity	arm_role	Contributor	microsoft.compute/virtualmachines	the VM managed identity and every role assigned to it	the VM must have an identity assigned; runCommand executes as SYSTEM or root without touching the guest credentials
+contributor-automation-identity	arm_role	Contributor	microsoft.automation/automationaccounts	the Automation Account managed identity, and any credential stored in the account	runbook creation and execution is a Contributor operation
+contributor-appservice-identity	arm_role	Contributor	microsoft.web/sites	the App Service or Function managed identity, plus deployment credentials	publishxml returns a publish profile containing usable credentials
+contributor-logicapp-identity	arm_role	Contributor	microsoft.logic/workflows	the Logic App managed identity and every API connection it holds	API connections often carry consented access to third-party SaaS
+contributor-aks-identity	arm_role	Contributor	microsoft.containerservice/managedclusters	cluster admin credentials and the kubelet identity	listClusterAdminCredential is available to Contributor unless local accounts are disabled
+contributor-aci-identity	arm_role	Contributor	microsoft.containerinstance/containergroups	the container group managed identity	a new container group can be created with an existing user-assigned identity attached
+contributor-storage-keys	arm_role	Contributor	microsoft.storage/storageaccounts	account keys via listKeys, and every SAS derivable from them	an account key outlives the role assignment; it stays valid until someone rotates it
+contributor-keyvault-policy	arm_role	Contributor	microsoft.keyvault/vaults	data-plane access to vault contents by adding the principal to the access policy	only on vaults still using the access policy model; RBAC vaults do not honour policy edits
+contributor-acr	arm_role	Contributor	microsoft.containerregistry/registries	image pull and push, which is the build supply chain for anything consuming the registry	pushing a tag consumers already pull is the quiet version of this
+application-readwrite-all	app_role	Application.ReadWrite.All		tenant-wide compromise: add a credential to any service principal and authenticate as it	this is the single highest-value application permission in Entra and it is routinely granted to automation
+approleassignment-readwrite-all	app_role	AppRoleAssignment.ReadWrite.All		any application permission, self-granted, including Directory.ReadWrite.All	the permission to grant permissions is equivalent to holding all of them
+rolemanagement-readwrite-directory	app_role	RoleManagement.ReadWrite.Directory		Global Administrator, by assigning the directory role to itself	directory roles are separate from Azure RBAC; subscription-level controls do not constrain this
+directory-readwrite-all	app_role	Directory.ReadWrite.All		group membership, which frequently gates access granted elsewhere	adding a principal to a group inherits whatever that group was given
+privileged-access-readwrite	app_role	PrivilegedAccess.ReadWrite.AzureADGroup		activation into privileged roles managed through PIM	relevant only where PIM governs the roles that matter
+keyvault-secret-recursion	data_access	keyvault_secrets		every credential stored in the vault, each of which is a fresh input for a second run	queued deliberately rather than followed; auto-recursion turns one authorized test into an unbounded one
+storage-account-key	data_access	storage_keys		full control of every service in the account, and SAS tokens minted from the key	an account key is unscoped and unexpiring, so it is closer to a permanent backdoor than a credential
