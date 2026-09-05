@@ -1,0 +1,34 @@
+secret.txt
+secrets.txt
+conn.txt
+creds.txt
+credentials
+*.secret
+*.pem
+*.key
+.env
+.env.*
+
+# Run output
+*.jsonl
+STOP
+
+# Terraform. State holds both lab client secrets in cleartext.
+lab/.terraform/
+lab/*.tfstate
+lab/*.tfstate.*
+lab/*.tfvars
+lab/*.tfvars.json
+.terraform.lock.hcl
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
